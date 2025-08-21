@@ -1,0 +1,29 @@
+{
+    "name": "Perfecto - Your Beauty Destination",
+    "short_name": "Perfecto",
+    "description": "Discover beauty products and shop the latest trends at Perfecto.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#5DC9F4",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/favIcon.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/favIcon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "shopping",
+        "lifestyle"
+    ],
+    "lang": "en-US"
+}

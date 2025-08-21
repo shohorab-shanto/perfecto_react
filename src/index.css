@@ -1,0 +1,35 @@
+@import './scss/customUtilities.scss';
+@import './scss/button.scss';
+/* @import './scss/form.scss'; */
+
+/* @import url('https://fonts.googleapis.com/css2?family=Cute+Font&display=swap'); */
+
+*,
+*::before,
+*::after {
+    font-family: "Inter", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Essential Facebook Browser Compatibility Fixes - Only for Facebook browser */
+.facebook-browser {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+}
+
+.ios-facebook-browser {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden;
+}
+
+/* Prevent zoom on input focus for iOS Facebook browser only */
+.ios-facebook-browser input,
+.ios-facebook-browser textarea,
+.ios-facebook-browser select {
+    font-size: 16px !important;
+}

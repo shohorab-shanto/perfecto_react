@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favIcon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no" />
+
+    <!-- Essential meta tags for Facebook and social media -->
+    <meta property="og:title" content="Perfecto - Your Beauty Destination" />
+    <meta property="og:description" content="Discover beauty products and shop the latest trends at Perfecto." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://perfectobd.com" />
+    <meta property="og:image" content="https://perfectobd.com/favIcon.png" />
+    <meta property="og:site_name" content="Perfecto" />
+
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Perfecto - Your Beauty Destination" />
+    <meta name="twitter:description" content="Discover beauty products and shop the latest trends at Perfecto." />
+    <meta name="twitter:image" content="https://perfectobd.com/favIcon.png" />
+
+    <!-- iOS specific meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Perfecto" />
+
+    <!-- Facebook embedded browser compatibility -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#5DC9F4" />
+    <meta name="msapplication-TileColor" content="#5DC9F4" />
+
+    <!-- Enhanced iOS Facebook browser compatibility -->
+    <meta name="apple-touch-fullscreen" content="yes" />
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="MobileOptimized" content="320" />
+
+    <!-- Security headers - removing X-Frame-Options to allow Facebook embedding -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+
+    <!-- Referrer policy for better privacy -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <title>Perfecto</title>
+
+    <!-- Critical CSS and Facebook browser fixes -->
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #ffffff;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+        }
+
+        #root {
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Enhanced Facebook browser fixes */
+        .facebook-browser {
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+        }
+
+        .ios-facebook-browser {
+            -webkit-overflow-scrolling: touch;
+            overflow-x: hidden;
+            -webkit-transform: translate3d(0, 0, 0);
+            transform: translate3d(0, 0, 0);
+        }
+
+        /* Prevent white screen flash */
+        .ios-facebook-browser * {
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+        }
+
+        /* Force hardware acceleration for smoother rendering */
+        .ios-facebook-browser #root {
+            will-change: transform;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+
+        /* Loading fallback styles */
+        .loading-fallback {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #5DC9F4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Error fallback styles */
+        .error-fallback {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .error-content {
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .error-button {
+            background-color: #5DC9F4;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+
+        /* Prevent iOS zoom on inputs */
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="password"],
+        textarea,
+        select {
+            font-size: 16px !important;
+        }
+    </style>
+
+    <!-- JavaScript error handling for Facebook browser -->
+    <script>
+        // Global error handler for Facebook iOS browser
+        window.addEventListener('error', function (event) {
+            console.error('Global error caught:', event.error);
+
+            // Check if we're in Facebook iOS browser
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            const isFacebookBrowser = userAgent.includes('FBAN') ||
+                userAgent.includes('FBAV') ||
+                userAgent.includes('Instagram') ||
+                userAgent.includes('FB_IAB') ||
+                userAgent.includes('FB4A') ||
+                userAgent.includes('FBIOS') ||
+                userAgent.includes('FBANDROID');
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+            if (isFacebookBrowser && isIOS) {
+                console.log('Error in Facebook iOS browser - attempting recovery');
+
+                // Show error fallback if React fails to render
+                setTimeout(function () {
+                    const root = document.getElementById('root');
+                    if (root && (!root.children.length || root.innerHTML.trim() === '')) {
+                        console.log('React failed to render - showing fallback UI');
+                        showErrorFallback();
+                    }
+                }, 3000);
+            }
+        });
+
+        // Handle unhandled promise rejections
+        window.addEventListener('unhandledrejection', function (event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            // Prevent default to avoid white screen
+            event.preventDefault();
+        });
+
+        // Show loading fallback
+        function showLoadingFallback() {
+            const fallback = document.createElement('div');
+            fallback.className = 'loading-fallback';
+            fallback.innerHTML = '<div class="loading-spinner"></div>';
+            document.body.appendChild(fallback);
+            return fallback;
+        }
+
+        // Show error fallback
+        function showErrorFallback() {
+            const fallback = document.createElement('div');
+            fallback.className = 'error-fallback';
+            fallback.innerHTML = `
+                <div class="error-content">
+                    <h2>Something went wrong</h2>
+                    <p>We're sorry, but there was an error loading the page.</p>
+                    <button class="error-button" onclick="window.location.reload()">Refresh Page</button>
+                    <button class="error-button" onclick="window.location.href='/diagnostics'">Run Diagnostics</button>
+                    <button class="error-button" onclick="window.location.href='/'">Go Home</button>
+                    <button class="error-button" onclick="window.open('https://perfectobd.com', '_blank')">Open in Browser</button>
+                </div>
+            `;
+            document.body.appendChild(fallback);
+        }
+
+        // Manual function to go to diagnostics (can be called from console)
+        function goToDiagnostics() {
+            window.location.href = '/diagnostics';
+        }
+
+        // Make function globally available
+        window.goToDiagnostics = goToDiagnostics;
+
+        // Show loading fallback initially if React takes too long
+        let loadingFallback;
+        setTimeout(function () {
+            const root = document.getElementById('root');
+            if (root && (!root.children.length || root.innerHTML.trim() === '')) {
+                loadingFallback = showLoadingFallback();
+            }
+        }, 2000);
+
+        // Remove loading fallback when React renders
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(function () {
+                if (loadingFallback && document.getElementById('root').children.length > 0) {
+                    loadingFallback.remove();
+                }
+            }, 1000);
+        });
+    </script>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
