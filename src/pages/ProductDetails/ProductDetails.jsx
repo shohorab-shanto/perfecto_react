@@ -1,4 +1,4 @@
-import { Divider, Dropdown, Menu, Space, Spin, Tooltip } from "antd";
+import { Divider, Dropdown, Menu, Space, Spin, Tooltip, Modal } from "antd";
 import moment from "moment";
 import React, { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { BsCheck, BsFacebook, BsFillShareFill, BsLink45Deg, BsLinkedin, BsPersonCircle } from "react-icons/bs";
@@ -65,6 +65,10 @@ const ProductDetails = () => {
     const [mainPrice, setMainPrice] = useState(0);
     const [discountedPrice, setDiscountedPrice] = useState(0);
     const [isReviewMoreOffer, setIsReviewMoreOffer] = useState(false);
+    const [isSatisfactionOpen, setIsSatisfactionOpen] = useState(false);
+    const [saleStartTime, setSaleStartTime] = useState(null);
+    const [saleEndTime, setSaleEndTime] = useState(null);
+    const [timeLeft, setTimeLeft] = useState(null);
     const [productDetailsMutation, { data: singleProduct, isLoading }] = useProductDetailsMutation();
     const [getReviewMutation, { data: getReviewData, isLoading: reviewProductWiseIsLoading }] = useGetReviewProductWiseMutation();
     const [allReviewImages, { data: reviewImages }] = useReviewImagesMutation();
@@ -200,6 +204,100 @@ const ProductDetails = () => {
             fetchReviewImages();
         }
     }, [singleProduct]);
+
+    const parseOfferTimes = (offers) => {
+        console.log("Parsing offers:", offers);
+        if (!Array.isArray(offers) || offers.length === 0) return { start: null, end: null };
+        for (const offer of offers) {
+            const o = offer?.product_details?.offer || offer?.product_details?.offer_combo?.offer || offer?.product_details?.offer_combo;
+            if (!o) continue;
+            const endKeys = ["end_time", "end_date", "end_at", "expired_at", "expire_at"];
+            const startKeys = ["start_time", "start_date", "start_at", "begin_at"];
+            let end = null, start = null;
+            for (const key of endKeys) {
+                const val = o?.[key];
+                if (typeof val === "string") {
+                    const d = new Date(val);
+                    if (!isNaN(d.getTime())) { end = d; break; }
+                }
+            }
+            for (const key of startKeys) {
+                const val = o?.[key];
+                if (typeof val === "string") {
+                    const d = new Date(val);
+                    if (!isNaN(d.getTime())) { start = d; break; }
+                }
+            }
+            if (end || start) return { start, end };
+        }
+        return { start: null, end: null };
+    };
+
+    const getPersistedSaleEnd = (productId) => {
+        try {
+            if (!productId) return null;
+            const raw = localStorage.getItem(`sale_end_${productId}`);
+            if (!raw) return null;
+            const d = new Date(raw);
+            return isNaN(d.getTime()) ? null : d;
+        } catch { return null; }
+    };
+
+    const persistSaleEnd = (productId, date) => {
+        try {
+            if (!productId || !date) return;
+            localStorage.setItem(`sale_end_${productId}`, date.toISOString());
+        } catch {}
+    };
+
+    useEffect(() => {
+        const productId = singleProduct?.data?.product?.id;
+        const timesShade = parseOfferTimes(selectedShade?.offers);
+        const timesSize = parseOfferTimes(selectedSize?.offers);
+        const timesProduct = parseOfferTimes(selectedProduct?.offers);
+        const chosenStart = timesShade.start || timesSize.start || timesProduct.start || null;
+        let chosenEnd = timesShade.end || timesSize.end || timesProduct.end || null;
+
+        if (!chosenEnd) {
+            const persisted = getPersistedSaleEnd(productId);
+            if (persisted) {
+                chosenEnd = persisted;
+            } else {
+                chosenEnd = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                persistSaleEnd(productId, chosenEnd);
+            }
+        }
+
+        const derivedStart = chosenStart || (chosenEnd ? new Date(chosenEnd.getTime() - 24 * 60 * 60 * 1000) : null);
+        setSaleStartTime(derivedStart);
+        setSaleEndTime(chosenEnd);
+        if (derivedStart) console.log("Sale start:", derivedStart.toISOString());
+        if (chosenEnd) console.log("Sale end:", chosenEnd.toISOString());
+    }, [selectedShade?.offers, selectedSize?.offers, selectedProduct?.offers, singleProduct?.data?.product?.id]);
+
+    useEffect(() => {
+        let timer;
+        const tick = () => {
+            if (!saleEndTime) {
+                setTimeLeft(null);
+                return;
+            }
+            const now = new Date().getTime();
+            const diff = saleEndTime.getTime() - now;
+            if (diff <= 0) {
+                setTimeLeft({ d: 0, h: 0, m: 0, s: 0 });
+                return;
+            }
+            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const m = Math.floor((diff / (1000 * 60)) % 60);
+            const s = Math.floor((diff / 1000) % 60);
+            setTimeLeft({ d, h, m, s });
+        };
+        tick();
+        timer = setInterval(tick, 1000);
+        return () => clearInterval(timer);
+    }, [saleEndTime]);
 
     useEffect(() => {
         // check arrow key press event
@@ -575,6 +673,24 @@ const ProductDetails = () => {
                                                         <p className="whitespace-nowrap text-[#000000A6] text-opacity-65 font-inter text-xs font-normal leading-normal">
                                                             <span className="text-[#02792A] font-semibold text-base">(-{parseInt(selectedProduct?.discount_percent)}% Off)</span>
                                                         </p>
+                                                        <div className="flex items-center gap-2 ms-2 bg-[#FFF6F6] text-[#BF2E4B] rounded px-2 py-[4px]">
+                                                            <span className="text-xs font-semibold">Sale ends in</span>
+                                                            <span className="text-xs font-mono">
+                                                                {timeLeft ? (
+                                                                    <>
+                                                                        {timeLeft.d > 0 ? `${timeLeft.d}d ` : ''}
+                                                                        {String(timeLeft.h).padStart(2, '0')}:{String(timeLeft.m).padStart(2, '0')}:{String(timeLeft.s).padStart(2, '0')}
+                                                                    </>
+                                                                ) : (
+                                                                    '00:00:00'
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <div className="ms-2 mt-1 text-[#000000A6] text-xs">
+                                                            {/* <span>Start: {saleStartTime ? moment(saleStartTime).format('DD MMM, YYYY HH:mm') : '-'}</span>
+                                                            <span className="mx-2">|</span> */}
+                                                            {/* <span>End: {saleEndTime ? moment(saleEndTime).format('DD MMM, YYYY HH:mm') : '-'}</span> */}
+                                                        </div>
                                                     </div>
                                                 ) : (
                                                     <h2 className="flex items-center text-[28px] font-semibold tracking-[-1.12px] leading-[42px]">৳{mainPrice}</h2>
@@ -584,89 +700,117 @@ const ProductDetails = () => {
 
                                             {/* offer area start */}
                                             {selectedShade?.offers?.length > 0 && (
-                                                <div className="bg-[#EDEFF0] py-3 ps-2 md:ps-4 mb-3 md:mb-4">
-                                                    <ul className=" ps-4">
-                                                        {isReviewMoreOffer ? (
-                                                            <>
-                                                                {selectedShade?.offers?.map((offer, i) => (
-                                                                    <span key={i}>
-                                                                        <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
-                                                                            <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
-                                                                        </Link>
-                                                                    </span>
-                                                                ))}
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                {selectedShade?.offers?.slice(0, 2)?.map((offer, i) => (
-                                                                    <span key={i}>
-                                                                        <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
-                                                                            <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
-                                                                        </Link>
-                                                                    </span>
-                                                                ))}
-                                                            </>
-                                                        )}
-
-                                                        {selectedProduct?.offers?.length > 2 ? (
-                                                            isReviewMoreOffer ? (
-                                                                <li onClick={() => setIsReviewMoreOffer(false)} className=" text-[#0094CF] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
-                                                                    View Less
-                                                                </li>
+                                                <div className="flex flex-col md:flex-row gap-2 md:gap-3 mb-3 md:mb-4">
+                                                    <div onClick={() => setIsSatisfactionOpen(true)} className="bg-[#FDE2E4] text-[#BF2E4B] rounded px-3 py-2 text-xs md:text-sm font-medium flex items-center justify-center flex-1 hover:opacity-90 cursor-pointer">
+                                                        Not Satisfied? No Problem!
+                                                    </div>
+                                                    <div className="bg-[#EDEFF0] py-3 ps-2 md:ps-4 flex-1">
+                                                        <ul className=" ps-4">
+                                                            {isReviewMoreOffer ? (
+                                                                <>
+                                                                    {selectedShade?.offers?.map((offer, i) => (
+                                                                        <span key={i}>
+                                                                            <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
+                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
+                                                                            </Link>
+                                                                        </span>
+                                                                    ))}
+                                                                </>
                                                             ) : (
-                                                                <li onClick={() => setIsReviewMoreOffer(true)} className=" text-[#0094CF] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
-                                                                    View More Offers
-                                                                </li>
-                                                            )
-                                                        ) : (
-                                                            ""
-                                                        )}
-                                                    </ul>
+                                                                <>
+                                                                    {selectedShade?.offers?.slice(0, 2)?.map((offer, i) => (
+                                                                        <span key={i}>
+                                                                            <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
+                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
+                                                                            </Link>
+                                                                        </span>
+                                                                    ))}
+                                                                </>
+                                                            )}
+
+                                                            {selectedProduct?.offers?.length > 2 ? (
+                                                                isReviewMoreOffer ? (
+                                                                    <li onClick={() => setIsReviewMoreOffer(false)} className=" text-[#0094CF] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
+                                                                        View Less
+                                                                    </li>
+                                                                ) : (
+                                                                    <li onClick={() => setIsReviewMoreOffer(true)} className=" text-[#0094CF] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
+                                                                        View More Offers
+                                                                    </li>
+                                                                )
+                                                            ) : (
+                                                                ""
+                                                            )}
+                                                        </ul>
+                                                    </div>
                                                 </div>
                                             )}
 
                                             {selectedSize?.offers?.length > 0 && (
-                                                <div className="bg-[#EDEFF0] py-3 ps-2 md:ps-4 mb-3 md:mb-4">
-                                                    <ul className=" ps-4">
-                                                        {isReviewMoreOffer ? (
-                                                            <>
-                                                                {selectedSize?.offers?.map((offer, i) => (
-                                                                    <span key={i}>
-                                                                        <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
-                                                                            <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
-                                                                        </Link>
-                                                                    </span>
-                                                                ))}
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                {selectedSize?.offers?.slice(0, 2)?.map((offer, i) => (
-                                                                    <span key={i}>
-                                                                        <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
-                                                                            <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
-                                                                        </Link>
-                                                                    </span>
-                                                                ))}
-                                                            </>
-                                                        )}
-
-                                                        {selectedProduct?.offers?.length > 2 ? (
-                                                            isReviewMoreOffer ? (
-                                                                <li onClick={() => setIsReviewMoreOffer(false)} className=" text-[#0094CF] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
-                                                                    View Less
-                                                                </li>
+                                                <div className="flex flex-col md:flex-row gap-2 md:gap-3 mb-3 md:mb-4">
+                                                    <div onClick={() => setIsSatisfactionOpen(true)} className="bg-[#FDE2E4] text-[#BF2E4B] rounded px-3 py-2 text-xs md:text-sm font-medium flex items-center justify-center flex-1 hover:opacity-90 cursor-pointer">
+                                                        Not Satisfied? No Problem!
+                                                    </div>
+                                                    <div className="bg-[#EDEFF0] py-3 ps-2 md:ps-4 flex-1">
+                                                        <ul className=" ps-4">
+                                                            {isReviewMoreOffer ? (
+                                                                <>
+                                                                    {selectedSize?.offers?.map((offer, i) => (
+                                                                        <span key={i}>
+                                                                            <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
+                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
+                                                                            </Link>
+                                                                        </span>
+                                                                    ))}
+                                                                </>
                                                             ) : (
-                                                                <li onClick={() => setIsReviewMoreOffer(true)} className=" text-[#0094CF] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
-                                                                    View More Offers
-                                                                </li>
-                                                            )
-                                                        ) : (
-                                                            ""
-                                                        )}
-                                                    </ul>
+                                                                <>
+                                                                    {selectedSize?.offers?.slice(0, 2)?.map((offer, i) => (
+                                                                        <span key={i}>
+                                                                            <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
+                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
+                                                                            </Link>
+                                                                        </span>
+                                                                    ))}
+                                                                </>
+                                                            )}
+
+                                                            {selectedProduct?.offers?.length > 2 ? (
+                                                                isReviewMoreOffer ? (
+                                                                    <li onClick={() => setIsReviewMoreOffer(false)} className=" text-[#0094CF] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
+                                                                        View Less
+                                                                    </li>
+                                                                ) : (
+                                                                    <li onClick={() => setIsReviewMoreOffer(true)} className=" text-[#0094CF] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
+                                                                        View More Offers
+                                                                    </li>
+                                                                )
+                                                            ) : (
+                                                                ""
+                                                            )}
+                                                        </ul>
+                                                    </div>
                                                 </div>
                                             )}
                                             {/* offer area end */}
+                                            <Modal
+                                                centered
+                                                bodyStyle={{ padding: 0 }}
+                                                open={isSatisfactionOpen}
+                                                onCancel={() => setIsSatisfactionOpen(false)}
+                                                title="Not Satisfied? No Problem!"
+                                                okButtonProps={{ hidden: true }}
+                                                cancelButtonProps={{ hidden: true }}
+                                            >
+                                                <div className="px-5 pb-5 pt-2 space-y-4 text-left leading-relaxed">
+                                                    <p>
+                                                        At Perfecto, your satisfaction comes first. If you’re not happy with your purchase, simply return it back — no extra charges, no return fees.
+                                                    </p>
+                                                    <p>
+                                                        For the smoothest experience, please check your item at the time of delivery and return it back to the delivery person if needed while the delivery agent is still there.
+                                                    </p>
+                                                </div>
+                                            </Modal>
                                             <div className="mb-4">
                                                 {/* Shade & Size start */}
                                                 {singleProduct?.data?.product?.variation_type === "shade" ? (
@@ -1092,7 +1236,7 @@ const ProductDetails = () => {
                                             </div>
                                             <div className="flex items-center flex-col md:flex-row gap-2">
                                                 <img className="md:h-6 h-10" src={returnPolicyImage} alt="" />
-                                                <p className="text-[#000000A6] font-inter  xs:text-sm text-xs  text-center md:text-start font-medium leading-normal">Easy Return Policy</p>
+                                                <p onClick={() => navigate('/my-account/return-and-cancel')} className="text-[#000000A6] font-inter  xs:text-sm text-xs  text-center md:text-start font-medium leading-normal hover:underline hover:cursor-pointer">Easy Return Policy</p>
                                             </div>
                                             <div className="flex items-center flex-col md:flex-row gap-2">
                                                 <img className="md:h-6  h-10" src={soldByImage} alt="" />
