@@ -1,7 +1,7 @@
 import { Divider, Dropdown, Menu, Space, Spin, Tooltip, Modal } from "antd";
 import moment from "moment";
 import React, { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { BsCheck, BsFacebook, BsFillShareFill, BsLink45Deg, BsLinkedin, BsPersonCircle } from "react-icons/bs";
+import { BsCheck, BsFacebook, BsFillShareFill, BsLink45Deg, BsLinkedin, BsPersonCircle, BsClock, BsFire } from "react-icons/bs";
 import { FaAngleDown, FaTimes } from "react-icons/fa";
 import { FaCheck, FaChevronDown, FaRegHeart } from "react-icons/fa6";
 import { FiMinus, FiPlus, FiThumbsUp } from "react-icons/fi";
@@ -211,7 +211,7 @@ const ProductDetails = () => {
         for (const offer of offers) {
             const o = offer?.product_details?.offer || offer?.product_details?.offer_combo?.offer || offer?.product_details?.offer_combo;
             if (!o) continue;
-            const endKeys = ["end_time", "end_date", "end_at", "expired_at", "expire_at"];
+            const endKeys = ["expire_date", "end_time", "end_date", "end_at", "expired_at", "expire_at"];
             const startKeys = ["start_time", "start_date", "start_at", "begin_at"];
             let end = null, start = null;
             for (const key of endKeys) {
@@ -328,6 +328,58 @@ const ProductDetails = () => {
             window.removeEventListener("keydown", handleKeyDown);
         };
     }, [singleProduct, selectedProduct]);
+
+    const formatOfferExpiry = (offer) => {
+        const src = offer?.product_details?.offer || offer?.product_details?.offer_combo?.offer || offer?.product_details?.offer_combo;
+        const exp = src?.expire_date || src?.expiry_date;
+        return exp ? <span className="text-[#0094CF] ms-2">({moment(exp).format('DD MMM, YYYY')})</span> : null;
+    };
+
+    const formatOfferCountdown = (offer) => {
+        const src = offer?.product_details?.offer || offer?.product_details?.offer_combo?.offer || offer?.product_details?.offer_combo;
+        const exp = src?.expire_date || src?.expiry_date;
+        if (!exp) return null;
+        const end = new Date(exp);
+        if (isNaN(end.getTime())) return null;
+        const diff = end.getTime() - Date.now();
+        if (diff <= 0) {
+            return (
+                <span className="ms-2 inline-flex items-center gap-1 rounded bg-[#FF4D4F] text-white px-2 py-[2px] text-[11px]">
+                    <BsClock className="w-3 h-3" />
+                    <span className="font-semibold">Offer ended</span>
+                </span>
+            );
+        }
+        const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const m = Math.floor((diff / (1000 * 60)) % 60);
+        const s = Math.floor((diff / 1000) % 60);
+        return (
+            <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-red-200 text-black px-2 py-[2px] text-[10px] mb-1 shadow-sm">
+                <BsFire className="w-3 h-3 text-red-600" />
+                <span className="font-normal text-[10px]">Ends in</span>
+
+                {d > 0 && (
+                    <span className="font-mono font-normal bg-white/20 px-1.5 py-[1px] rounded-full backdrop-blur-sm">
+                        {d}d
+                    </span>
+                )}
+                <span className="font-mono font-bold bg-white/20 px-1.5 py-[1px] rounded-full backdrop-blur-sm">
+                    {String(h).padStart(2, "0")}
+                </span>
+                <span className="font-mono font-bold bg-white/20 px-1.5 py-[1px] rounded-full backdrop-blur-sm">
+                    {String(m).padStart(2, "0")}
+                </span>
+                <span className="font-mono font-bold bg-white/20 px-1.5 py-[1px] rounded-full backdrop-blur-sm">
+                    {String(s).padStart(2, "0")}
+                </span>
+            </span>
+        );
+    };
+
+    const shadeOffersDisplay = selectedShade?.offers;
+
+    const sizeOffersDisplay = selectedSize?.offers;
 
     const handleIncrement = () => {
         setCounter((prevCounter) => prevCounter + 1);
@@ -673,19 +725,6 @@ const ProductDetails = () => {
                                                         <p className="whitespace-nowrap text-[#000000A6] text-opacity-65 font-inter text-xs font-normal leading-normal">
                                                             <span className="text-[#02792A] font-semibold text-base">(-{parseInt(selectedProduct?.discount_percent)}% Off)</span>
                                                         </p>
-                                                        <div className="flex items-center gap-2 ms-2 bg-[#FFF6F6] text-[#BF2E4B] rounded px-2 py-[4px]">
-                                                            <span className="text-xs font-semibold">Sale ends in</span>
-                                                            <span className="text-xs font-mono">
-                                                                {timeLeft ? (
-                                                                    <>
-                                                                        {timeLeft.d > 0 ? `${timeLeft.d}d ` : ''}
-                                                                        {String(timeLeft.h).padStart(2, '0')}:{String(timeLeft.m).padStart(2, '0')}:{String(timeLeft.s).padStart(2, '0')}
-                                                                    </>
-                                                                ) : (
-                                                                    '00:00:00'
-                                                                )}
-                                                            </span>
-                                                        </div>
                                                         <div className="ms-2 mt-1 text-[#000000A6] text-xs">
                                                             {/* <span>Start: {saleStartTime ? moment(saleStartTime).format('DD MMM, YYYY HH:mm') : '-'}</span>
                                                             <span className="mx-2">|</span> */}
@@ -708,20 +747,28 @@ const ProductDetails = () => {
                                                         <ul className=" ps-4">
                                                             {isReviewMoreOffer ? (
                                                                 <>
-                                                                    {selectedShade?.offers?.map((offer, i) => (
+                                                                    {shadeOffersDisplay?.map((item, i) => (
                                                                         <span key={i}>
-                                                                            <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
-                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
+                                                                            <Link to={`/campaign/${item?.product_details?.offer_id}`}>
+                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
+                                                                                    {item?.title}
+                                                                                    {/* {formatOfferExpiry(item)} */}
+                                                                                    {formatOfferCountdown(item)}
+                                                                                </li>
                                                                             </Link>
                                                                         </span>
                                                                     ))}
                                                                 </>
                                                             ) : (
                                                                 <>
-                                                                    {selectedShade?.offers?.slice(0, 2)?.map((offer, i) => (
+                                                                    {shadeOffersDisplay?.slice(0, 2)?.map((item, i) => (
                                                                         <span key={i}>
-                                                                            <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
-                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
+                                                                            <Link to={`/campaign/${item?.product_details?.offer_id}`}>
+                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
+                                                                                    {item?.title}
+                                                                                    {/* {formatOfferExpiry(item)} */}
+                                                                                    {formatOfferCountdown(item)}
+                                                                                </li>
                                                                             </Link>
                                                                         </span>
                                                                     ))}
@@ -755,20 +802,29 @@ const ProductDetails = () => {
                                                         <ul className=" ps-4">
                                                             {isReviewMoreOffer ? (
                                                                 <>
-                                                                    {selectedSize?.offers?.map((offer, i) => (
+                                                                    {sizeOffersDisplay?.map((item, i) => (
                                                                         <span key={i}>
-                                                                            <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
-                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
+                                                                            <Link to={`/campaign/${item?.product_details?.offer_id}`}>
+                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
+                                                                                    {item?.title}
+                                                                                    {/* {formatOfferExpiry(item)} */}
+                                                                                    {formatOfferCountdown(item)}
+                                                                                </li>
                                                                             </Link>
                                                                         </span>
                                                                     ))}
                                                                 </>
                                                             ) : (
                                                                 <>
-                                                                    {selectedSize?.offers?.slice(0, 2)?.map((offer, i) => (
+                                                                    {sizeOffersDisplay?.slice(0, 2)?.map((item, i) => (
+                                                                         
                                                                         <span key={i}>
-                                                                            <Link to={`/campaign/${offer?.product_details?.offer_id}`}>
-                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">{offer?.title}</li>
+                                                                            <Link to={`/campaign/${item?.product_details?.offer_id}`}>
+                                                                                <li className="list-disc text-[#000000CC] font-Inter text-xs xs:text-sm font-normal leading-normal hover:cursor-pointer">
+                                                                                    {item?.title}
+                                                                                    {/* {formatOfferExpiry(item)} */}
+                                                                                    {formatOfferCountdown(item)}
+                                                                                </li>
                                                                             </Link>
                                                                         </span>
                                                                     ))}
